@@ -3,6 +3,9 @@ from acdc.docstring.utils import AllDataThings
 from transformer_lens import HookedTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import pandas as pd
+from acdc.acdc_utils import kl_divergence
+from functools import partial
+
 
 
 def get_llama2_7b_chat(device="cuda") -> HookedTransformer:
@@ -58,6 +61,24 @@ What is the profession of {subject}? [/INST]
 
 def get_all_competing_things() -> AllDataThings:
     tl_model = get_llama2_7b_chat()
+
+    prompt = """\
+    [INST] <<SYS>>
+    You are a helpful assistant who responds with one word.
+    <</SYS>>
+
+    Where is the Eiffel Tower located? [/INST]
+    """
+
+    validation_data = torch.LongTensor(tl_model.tokenizer([prompt]).input_ids)
+
+    validation_metric = partial(
+        kl_divergence,
+        base_model_logprobs=base_validation_logprobs,
+        last_seq_element_only=True,
+        base_model_probs_last_seq_element_only=False,
+        return_one_element=kl_return_one_element,
+    )
 
     return AllDataThings(
         tl_model=tl_model,
